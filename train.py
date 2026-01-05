@@ -12,7 +12,7 @@ from pathlib import Path
 import PIL
 from PIL import Image
 
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from timeit import default_timer as timer 
 
 import matplotlib.pyplot as plt
@@ -79,8 +79,8 @@ image_transform_test = v2.Compose([
 train_data = datasets.ImageFolder(train_dir, transform=image_transform, target_transform=None)
 test_data = datasets.ImageFolder(test_dir, transform=image_transform_test, target_transform=None)
 
-train_dataloader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True, num_workers=4)
-test_dataloader = DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=False, pin_memory=True, num_workers=4)
+train_dataloader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True)
+test_dataloader = DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=False, pin_memory=True)
 
 
 
@@ -143,7 +143,7 @@ model=model.to(device)
 """Defining the cost function and the optimizer"""
 cost_fn = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(params=model.parameters(), lr=LR)
-
+scaler = torch.amp.GradScaler("cuda")
 
 
 """Training the model"""
@@ -157,23 +157,31 @@ for epoch in tqdm(range(EPOCHS)):
     if batch % 50 == 0:
       print("   Batch: ", batch)
     x, y = x.to(device), y.to(device)
-    preds = model(x)
-    loss = cost_fn(preds, y)
+    
+    with torch.amp.autocast("cuda"):
+      preds = model(x)
+      loss = cost_fn(preds, y)
+
     train_loss += loss.item()
     train_acc += helper.accuracy_fn(y_true=y, y_pred=preds.argmax(dim=1))
+
     optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
+    scaler.scale(loss).backward()
+    scaler.step(optimizer)
+    scaler.update()
 
   print("Train loss: ", train_loss/len(train_dataloader))
   print("Train acc: ", train_acc/len(train_dataloader))
 
   model.eval()
   with torch.inference_mode():
-    for batch, (x, y) in enumerate(test_dataloader):   
+    for batch, (x, y) in enumerate(test_dataloader):
       x, y = x.to(device), y.to(device)
-      preds = model(x)
-      loss = cost_fn(preds, y)
+
+      with torch.amp.autocast("cuda"):
+        preds = model(x)
+        loss = cost_fn(preds, y)
+        
       test_loss += loss.item()
       test_acc += helper.accuracy_fn(y_true=y, y_pred=preds.argmax(dim=1))
   

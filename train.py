@@ -35,8 +35,8 @@ HIDDEN_UNITS = 128
 HIDDEN_UNITS_MULTIPLICATION = 2
 CONV_LAYERS = 3
 CLASSIFICATION_HIDDEN_UNITS = 128
-SEED = 42
-LR = 0.0001
+SEED = 69
+LR = 0.0002
 EPOCHS = 100
 DROPOUT_LINEAR = 0.4
 
@@ -79,8 +79,8 @@ image_transform_test = v2.Compose([
 train_data = datasets.ImageFolder(train_dir, transform=image_transform, target_transform=None)
 test_data = datasets.ImageFolder(test_dir, transform=image_transform_test, target_transform=None)
 
-train_dataloader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True)
-test_dataloader = DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=False, pin_memory=True)
+train_dataloader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True, num_workers=4)
+test_dataloader = DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=False, pin_memory=True, num_workers=4)
 
 
 
@@ -120,6 +120,7 @@ class PokemonRecognition(nn.Module):
         nn.Linear(in_features=int(cnn_hidden_units*(HIDDEN_UNITS_MULTIPLICATION**2)*((IMAGE_SIZE/(2**(CONV_LAYERS)))**2)),
                   out_features=classification_hidden_units),
         nn.ReLU(),
+        nn.Dropout(p=DROPOUT_LINEAR),
         nn.Linear(in_features=classification_hidden_units, out_features=out_units)
     )
     
@@ -148,15 +149,17 @@ optimizer = torch.optim.Adam(params=model.parameters(), lr=LR)
 """Training the model"""
 start = timer()
 for epoch in tqdm(range(EPOCHS)):
-  print("Epoch: ", epoch)
+  print("\nEpoch: ", epoch)
   train_loss, test_loss = 0, 0
   train_acc, test_acc = 0, 0
   model.train()
   for batch, (x, y) in enumerate(train_dataloader):
+    if batch % 50 == 0:
+      print("   Batch: ", batch)
     x, y = x.to(device), y.to(device)
     preds = model(x)
     loss = cost_fn(preds, y)
-    train_loss += loss
+    train_loss += loss.item()
     train_acc += helper.accuracy_fn(y_true=y, y_pred=preds.argmax(dim=1))
     optimizer.zero_grad()
     loss.backward()
@@ -167,11 +170,11 @@ for epoch in tqdm(range(EPOCHS)):
 
   model.eval()
   with torch.inference_mode():
-    for batch, (x, y) in enumerate(test_dataloader):
+    for batch, (x, y) in enumerate(test_dataloader):   
       x, y = x.to(device), y.to(device)
       preds = model(x)
       loss = cost_fn(preds, y)
-      test_loss += loss
+      test_loss += loss.item()
       test_acc += helper.accuracy_fn(y_true=y, y_pred=preds.argmax(dim=1))
   
   print("Test loss: ", test_loss/len(test_dataloader))

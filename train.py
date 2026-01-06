@@ -33,12 +33,12 @@ IMAGE_SIZE = 224
 BATCH_SIZE = 32
 HIDDEN_UNITS = 64
 HIDDEN_UNITS_MULTIPLICATION = 2
-CONV_LAYERS = 3
+CONV_LAYERS = 5
 CONVS_IN_LAYER = 2
 CLASSIFICATION_HIDDEN_UNITS = 64
 SEED = 42
 LR = 0.0002
-EPOCHS = 50
+EPOCHS = 100
 DROPOUT_LINEAR = 0.4
 TRIVIAL_AUGMENT_BINS = 30
 
@@ -78,11 +78,15 @@ class PokemonRecognition(nn.Module):
         self.CNN_Block(in_channels=cnn_hidden_units,
                        hidden_units=cnn_hidden_units*HIDDEN_UNITS_MULTIPLICATION),
         self.CNN_Block(in_channels=cnn_hidden_units*HIDDEN_UNITS_MULTIPLICATION,
-                       hidden_units=cnn_hidden_units*HIDDEN_UNITS_MULTIPLICATION**2)
+                       hidden_units=cnn_hidden_units*HIDDEN_UNITS_MULTIPLICATION**2),
+        self.CNN_Block(in_channels=cnn_hidden_units*HIDDEN_UNITS_MULTIPLICATION**2,
+                       hidden_units=cnn_hidden_units*HIDDEN_UNITS_MULTIPLICATION**3),
+        self.CNN_Block(in_channels=cnn_hidden_units*HIDDEN_UNITS_MULTIPLICATION**3,
+                       hidden_units=cnn_hidden_units*HIDDEN_UNITS_MULTIPLICATION**4)
     )
     self.classifier = nn.Sequential(
         nn.Flatten(),
-        nn.Linear(in_features=int(cnn_hidden_units*(HIDDEN_UNITS_MULTIPLICATION**2)*((IMAGE_SIZE/(2**(CONV_LAYERS)))**2)),
+        nn.Linear(in_features=int(cnn_hidden_units*(HIDDEN_UNITS_MULTIPLICATION**(CONV_LAYERS-1))*((IMAGE_SIZE/(2**(CONV_LAYERS)))**2)),
                   out_features=classification_hidden_units),
         nn.ReLU(),
         nn.BatchNorm1d(num_features=classification_hidden_units),
@@ -197,7 +201,7 @@ def main():
   end = timer()
   print(f"Total training time: {end-start}")
 
-  torch.save(model.state_dict(), Path("model.pt"))
+  torch.save(model, Path("model.pt"))
 
 if __name__ == "__main__":
   main()

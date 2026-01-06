@@ -34,11 +34,13 @@ BATCH_SIZE = 32
 HIDDEN_UNITS = 64
 HIDDEN_UNITS_MULTIPLICATION = 2
 CONV_LAYERS = 3
+CONVS_IN_LAYER = 2
 CLASSIFICATION_HIDDEN_UNITS = 64
 SEED = 42
 LR = 0.0002
-EPOCHS = 20
+EPOCHS = 50
 DROPOUT_LINEAR = 0.4
+TRIVIAL_AUGMENT_BINS = 30
 
 torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
@@ -119,7 +121,7 @@ def main():
 
   image_transform = v2.Compose([
       v2.Resize(size=(IMAGE_SIZE, IMAGE_SIZE)),
-      v2.RandomHorizontalFlip(p=0.5),
+      v2.TrivialAugmentWide(num_magnitude_bins=TRIVIAL_AUGMENT_BINS),
       v2.ToTensor()
   ])
 
@@ -194,7 +196,7 @@ def main():
 
   end = timer()
   print(f"Total training time: {end-start}")
-  
+
   torch.save(model.state_dict(), Path("model.pt"))
 
 if __name__ == "__main__":

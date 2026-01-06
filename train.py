@@ -30,16 +30,16 @@ import helper
 
 """Hyperparameters"""
 IMAGE_SIZE = 224
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 HIDDEN_UNITS = 64
 HIDDEN_UNITS_MULTIPLICATION = 2
 CONV_LAYERS = 5
 CONVS_IN_LAYER = 2
 CLASSIFICATION_HIDDEN_UNITS = 64
 SEED = 42
-LR = 0.0002
+LR = 0.00015
 EPOCHS = 100
-DROPOUT_LINEAR = 0.4
+DROPOUT_LINEAR = 0.5
 TRIVIAL_AUGMENT_BINS = 30
 
 torch.manual_seed(SEED)
@@ -152,7 +152,7 @@ def main():
 
   """Defining the cost function and the optimizer"""
   cost_fn = nn.CrossEntropyLoss()
-  optimizer = torch.optim.Adam(params=model.parameters(), lr=LR)
+  optimizer = torch.optim.AdamW(params=model.parameters(), lr=LR)
   scaler = torch.amp.GradScaler("cuda")
 
 
@@ -164,8 +164,6 @@ def main():
     train_acc, test_acc = 0, 0
     model.train()
     for batch, (x, y) in enumerate(train_dataloader):
-      if batch % 50 == 0:
-        print("   Batch: ", batch)
       x, y = x.to(device), y.to(device)
       
       with torch.amp.autocast("cuda"):
